@@ -1,0 +1,8 @@
+[package]
+name = "chip-8-main"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+chip-8-rendering = { path = "../chip-8-rendering" }
+chip-8-interpreter = { path = "../chip-8-interpreter" }
