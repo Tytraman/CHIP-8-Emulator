@@ -41,11 +41,72 @@ pub trait Draw {
     fn set_visible(&mut self, value: bool);
 }
 
+#[derive(Clone, Debug)]
+pub enum KeyStatus {
+    Pressed,
+    Released,
+}
+
+pub struct Keys {
+    pub one: (KeyStatus, KeyStatus),
+    pub two: (KeyStatus, KeyStatus),
+    pub three: (KeyStatus, KeyStatus),
+    pub four: (KeyStatus, KeyStatus),
+    pub a: (KeyStatus, KeyStatus),
+    pub c: (KeyStatus, KeyStatus),
+    pub d: (KeyStatus, KeyStatus),
+    pub e: (KeyStatus, KeyStatus),
+    pub f: (KeyStatus, KeyStatus),
+    pub n: (KeyStatus, KeyStatus),
+    pub o: (KeyStatus, KeyStatus),
+    pub p: (KeyStatus, KeyStatus),
+    pub q: (KeyStatus, KeyStatus),
+    pub r: (KeyStatus, KeyStatus),
+    pub s: (KeyStatus, KeyStatus),
+    pub v: (KeyStatus, KeyStatus),
+    pub w: (KeyStatus, KeyStatus),
+    pub x: (KeyStatus, KeyStatus),
+    pub z: (KeyStatus, KeyStatus),
+    pub space: (KeyStatus, KeyStatus),
+}
+
+impl Keys {
+    pub fn new() -> Self {
+        Self {
+            one: (KeyStatus::Released, KeyStatus::Released),
+            two: (KeyStatus::Released, KeyStatus::Released),
+            three: (KeyStatus::Released, KeyStatus::Released),
+            four: (KeyStatus::Released, KeyStatus::Released),
+            a: (KeyStatus::Released, KeyStatus::Released),
+            c: (KeyStatus::Released, KeyStatus::Released),
+            d: (KeyStatus::Released, KeyStatus::Released),
+            e: (KeyStatus::Released, KeyStatus::Released),
+            f: (KeyStatus::Released, KeyStatus::Released),
+            n: (KeyStatus::Released, KeyStatus::Released),
+            o: (KeyStatus::Released, KeyStatus::Released),
+            p: (KeyStatus::Released, KeyStatus::Released),
+            q: (KeyStatus::Released, KeyStatus::Released),
+            r: (KeyStatus::Released, KeyStatus::Released),
+            s: (KeyStatus::Released, KeyStatus::Released),
+            v: (KeyStatus::Released, KeyStatus::Released),
+            w: (KeyStatus::Released, KeyStatus::Released),
+            x: (KeyStatus::Released, KeyStatus::Released),
+            z: (KeyStatus::Released, KeyStatus::Released),
+            space: (KeyStatus::Released, KeyStatus::Released),
+        }
+    }
+}
+
 pub struct Renderer {
     context: GLContext,
     gl: (),
     vbos: HashMap<usize, VBO>,
     drawing_objects: Vec<Box<dyn Draw>>,
+    keys: Keys,
+}
+
+pub struct RendererParams {
+    pub renderer: Renderer,
 }
 
 impl Renderer {
@@ -55,6 +116,7 @@ impl Renderer {
             gl,
             vbos: HashMap::new(),
             drawing_objects: Vec::new(),
+            keys: Keys::new(),
         }
     }
 
@@ -175,6 +237,16 @@ impl Renderer {
         Ok(pixel)
     }
 
+    pub fn clear_grid_pixel(&mut self) -> Result<(), String> {
+        for x in 0..64 {
+            for y in 0..32 {
+                self.set_grid_pixel(x, y, false)?;
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn toggle_grid_pixel(&mut self, x: usize, y: usize) -> Result<(), String> {
         let pixel = match self.get_pixel(x, y) {
             Ok(t) => t,
@@ -213,6 +285,81 @@ impl Renderer {
 
     pub fn borrow_drawing_objects(&self) -> &Vec<Box<dyn Draw>> {
         &self.drawing_objects
+    }
+
+    pub fn get_key_status(&self, key: &str) -> Option<(KeyStatus, KeyStatus)> {
+        match key {
+            "1" => Some(self.keys.one.clone()),
+            "2" => Some(self.keys.two.clone()),
+            "3" => Some(self.keys.three.clone()),
+            "4" => Some(self.keys.four.clone()),
+            "a" => Some(self.keys.a.clone()),
+            "c" => Some(self.keys.c.clone()),
+            "d" => Some(self.keys.d.clone()),
+            "e" => Some(self.keys.e.clone()),
+            "f" => Some(self.keys.f.clone()),
+            "n" => Some(self.keys.n.clone()),
+            "o" => Some(self.keys.o.clone()),
+            "p" => Some(self.keys.p.clone()),
+            "q" => Some(self.keys.q.clone()),
+            "r" => Some(self.keys.r.clone()),
+            "s" => Some(self.keys.s.clone()),
+            "v" => Some(self.keys.v.clone()),
+            "w" => Some(self.keys.w.clone()),
+            "x" => Some(self.keys.x.clone()),
+            "z" => Some(self.keys.z.clone()),
+            " " => Some(self.keys.space.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn update_last_key_states(&mut self) {
+        self.keys.one.1 = self.keys.one.0.clone();
+        self.keys.two.1 = self.keys.two.0.clone();
+        self.keys.three.1 = self.keys.three.0.clone();
+        self.keys.four.1 = self.keys.four.0.clone();
+        self.keys.a.1 = self.keys.a.0.clone();
+        self.keys.c.1 = self.keys.c.0.clone();
+        self.keys.d.1 = self.keys.d.0.clone();
+        self.keys.e.1 = self.keys.e.0.clone();
+        self.keys.f.1 = self.keys.f.0.clone();
+        self.keys.n.1 = self.keys.n.0.clone();
+        self.keys.o.1 = self.keys.o.0.clone();
+        self.keys.p.1 = self.keys.p.0.clone();
+        self.keys.q.1 = self.keys.q.0.clone();
+        self.keys.r.1 = self.keys.r.0.clone();
+        self.keys.s.1 = self.keys.s.0.clone();
+        self.keys.v.1 = self.keys.v.0.clone();
+        self.keys.w.1 = self.keys.w.0.clone();
+        self.keys.x.1 = self.keys.x.0.clone();
+        self.keys.z.1 = self.keys.z.0.clone();
+        self.keys.space.1 = self.keys.space.0.clone();
+    }
+
+    pub fn set_key_state(&mut self, key: &str, state: KeyStatus) {
+        match key {
+            "1" => self.keys.one.0 = state,
+            "2" => self.keys.two.0 = state,
+            "3" => self.keys.three.0 = state,
+            "4" => self.keys.four.0 = state,
+            "a" => self.keys.a.0 = state,
+            "c" => self.keys.c.0 = state,
+            "d" => self.keys.d.0 = state,
+            "e" => self.keys.e.0 = state,
+            "f" => self.keys.f.0 = state,
+            "n" => self.keys.n.0 = state,
+            "o" => self.keys.o.0 = state,
+            "p" => self.keys.p.0 = state,
+            "q" => self.keys.q.0 = state,
+            "r" => self.keys.r.0 = state,
+            "s" => self.keys.s.0 = state,
+            "v" => self.keys.v.0 = state,
+            "w" => self.keys.w.0 = state,
+            "x" => self.keys.x.0 = state,
+            "z" => self.keys.z.0 = state,
+            " " => self.keys.space.0 = state,
+            _ => (),
+        }
     }
 }
 
