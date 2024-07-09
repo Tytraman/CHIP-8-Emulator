@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, rc::Rc, time::Duration};
 
 use chip_8_interpreter::chip::Chip8;
 use chip_8_rendering::{
@@ -86,9 +86,35 @@ pub fn update_callback(renderer_params: Rc<RefCell<RendererParams>>, user_data: 
         }
     });
 
-    if !chip8.is_paused() {
-        chip8.execute_next_instruction();
-    } else {
+    if chip8.need_to_fetch() {
+        // Récupère l'instruction suivante.
+        let ins = match chip8.fetch_next_instruction() {
+            Ok(o) => o,
+            Err(err) => {
+                eprintln!("[CHIP-8 error] {err}");
+
+                return ();
+            }
+        };
+
+        {
+            // Décode l'instruction à exécuter.
+            let disassembly = match chip8.decode_instruction(ins) {
+                Ok(o) => o,
+                Err(err) => {
+                    eprintln!("[CHIP-8 error] Decode instruction: {err}");
+
+                    return ();
+                }
+            };
+
+            println!("[CHIP-8] {disassembly}");
+        }
+
+        chip8.set_need_to_fetch(false);
+    }
+
+    if chip8.is_paused() {
         // Il n'est possible d'afficher la valeur des registres que si l'interpréteur est en pause.
         check_key_state(&renderer_params, "o", |pressed, last_state| {
             if matches!(pressed, KeyStatus::Pressed) && matches!(last_state, KeyStatus::Released) {
@@ -97,5 +123,14 @@ pub fn update_callback(renderer_params: Rc<RefCell<RendererParams>>, user_data: 
                 chip8.print_registers();
             }
         });
+    } else {
+        let period = 1.0_f64 / 500.0_f64;
+        let nanos = period * 1_000_000_000.0_f64;
+
+        if chip8.get_elapsed_time_since_last_instruction() >= Duration::from_nanos(nanos as u64) {
+            // Exécute l'instruction.
+            chip8.execute_instruction();
+            chip8.set_need_to_fetch(true);
+        }
     }
 }
