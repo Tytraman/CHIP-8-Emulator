@@ -1,8 +1,6 @@
 use std::{any::Any, fs, time::{Duration, Instant}};
 
-use rand::Rng;
-
-use crate::{instruction::{Instruction, Operands}, memory::Memory, register::Registers};
+use crate::{instruction::{self, Instruction}, memory::Memory, register::Registers};
 
 pub struct CallbackData {
     data: Option<Box<dyn Any>>,
@@ -32,10 +30,10 @@ impl CallbackData {
 }
 
 pub struct Chip8Callback<'a> {
-    clear_pixel: Box<dyn FnMut(&mut CallbackData) + 'a>,
-    set_pixel: Box<dyn FnMut(&mut CallbackData, u8, u8) + 'a>,
-    unset_pixel: Box<dyn FnMut(&mut CallbackData, u8, u8) + 'a>,
-    callback_data: CallbackData,
+    pub(crate) clear_pixel: Box<dyn FnMut(&mut CallbackData) + 'a>,
+    pub(crate) set_pixel: Box<dyn FnMut(&mut CallbackData, u8, u8) + 'a>,
+    pub(crate) unset_pixel: Box<dyn FnMut(&mut CallbackData, u8, u8) + 'a>,
+    pub(crate) callback_data: CallbackData,
 }
 
 impl<'a> Chip8Callback<'a> {
@@ -177,12 +175,12 @@ impl<'a> Chip8<'a> {
                     0x00E0 => {
                         // Nettoie l'écran.
                         next_instruction.set_disassembled("CLS".to_string());
-                        next_instruction.set_callback(clean_screen);
+                        next_instruction.set_callback(instruction::clean_screen);
                     }
                     0x00EE => {
                         // Retourne depuis une fonction.
                         next_instruction.set_disassembled("RET".to_string());
-                        next_instruction.set_callback(ret);
+                        next_instruction.set_callback(instruction::ret);
                     }
                     _ => {
                         // Ignorée par les interpréteurs modernes.
@@ -193,120 +191,120 @@ impl<'a> Chip8<'a> {
             0x1 => {
                 // Met la valeur du registre PC à nnn.
                 next_instruction.set_disassembled(format!("JP ${:04X}", next_instruction.borrow_operands().nnn));
-                next_instruction.set_callback(jp_addr);
+                next_instruction.set_callback(instruction::jp_addr);
             }
             0x2 => {
                 // Appelle la fonction située à l'adresse nnn.
                 next_instruction.set_disassembled(format!("CALL ${:04X}", next_instruction.borrow_operands().nnn));
-                next_instruction.set_callback(call_addr);
+                next_instruction.set_callback(instruction::call_addr);
             }
             0x3 => {
                 // Ignore la prochaine instruction si Vx == kk
                 next_instruction.set_disassembled(format!("SE V{:01X}, {:02X}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().kk));
-                next_instruction.set_callback(se_reg_byte);
+                next_instruction.set_callback(instruction::se_reg_byte);
             }
             0x4 => {
                 // Ignore la prochaine instruction si Vx != kk
                 next_instruction.set_disassembled(format!("SNE V{:01X}, {:02X}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().kk));
-                next_instruction.set_callback(sne_reg_byte);
+                next_instruction.set_callback(instruction::sne_reg_byte);
             }
             0x5 => {
                 // Ignore la prochaine instruction si Vx == Vy
                 next_instruction.set_disassembled(format!("SE V{:01X}, V{:01X}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().y));
-                next_instruction.set_callback(se_reg_reg);
+                next_instruction.set_callback(instruction::se_reg_reg);
             }
             0x6 => {
                 // Met la valeur kk dans le registre Vx.
                 next_instruction.set_disassembled(format!("LD V{:01X}, {:02X}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().kk));
-                next_instruction.set_callback(ld_reg_byte);
+                next_instruction.set_callback(instruction::ld_reg_byte);
             }
             0x7 => {
                 // Vx = Vx + kk
                 next_instruction.set_disassembled(format!("ADD V{:01X}, {:02X}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().kk));
-                next_instruction.set_callback(add_reg_byte);
+                next_instruction.set_callback(instruction::add_reg_byte);
             }
             0x8 => match instruction & 0x000F {
                 0x0 => {
                     // Vx = Vy
                     next_instruction.set_disassembled(format!("LD V{:01X}, V{:01X}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().y));
-                    next_instruction.set_callback(ld_reg_reg);
+                    next_instruction.set_callback(instruction::ld_reg_reg);
                 }
                 0x1 => {
                     // Vx = Vx | Vy
                     next_instruction.set_disassembled(format!("OR V{:01X}, V{:01X}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().y));
-                    next_instruction.set_callback(or_reg_reg);
+                    next_instruction.set_callback(instruction::or_reg_reg);
                 }
                 0x2 => {
                     // Vx = Vx & Vy
                     next_instruction.set_disassembled(format!("AND V{:01X}, V{:01X}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().y));
-                    next_instruction.set_callback(and_reg_reg);
+                    next_instruction.set_callback(instruction::and_reg_reg);
                 }
                 0x3 => {
                     // Vx = Vx ^ Vy
                     next_instruction.set_disassembled(format!("XOR V{:01X}, V{:01X}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().y));
-                    next_instruction.set_callback(xor_reg_reg);
+                    next_instruction.set_callback(instruction::xor_reg_reg);
                 }
                 0x4 => {
                     // Vx = Vx + Vy
                     next_instruction.set_disassembled(format!("ADD V{:01X}, V{:01X}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().y));
-                    next_instruction.set_callback(add_reg_reg);
+                    next_instruction.set_callback(instruction::add_reg_reg);
                 }
                 0x5 => {
                     // Vx = Vx - Vy
                     next_instruction.set_disassembled(format!("SUB V{:01X}, V{:01X}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().y));
-                    next_instruction.set_callback(sub_reg_reg);
+                    next_instruction.set_callback(instruction::sub_reg_reg);
                 }
                 0x6 => {
                     // Vx = Vx >> Vy
                     next_instruction.set_disassembled(format!("SHR V{:01X}", next_instruction.borrow_operands().x));
-                    next_instruction.set_callback(shr_reg_reg);
+                    next_instruction.set_callback(instruction::shr_reg_reg);
                 }
                 0x7 => {
                     // Vx = Vy - Vx
                     next_instruction.set_disassembled(format!("SUBN V{:01X}, V{:01X}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().y));
-                    next_instruction.set_callback(subn_reg_reg);
+                    next_instruction.set_callback(instruction::subn_reg_reg);
                 }
                 0xE => {
                     // Vx = Vx << Vy
                     next_instruction.set_disassembled(format!("SHL V{:01X}", next_instruction.borrow_operands().x));
-                    next_instruction.set_callback(shl_reg_reg);
+                    next_instruction.set_callback(instruction::shl_reg_reg);
                 }
                 _ => (),
             },
             0x9 => {
                 // Ignore la prochaine instruction si Vx != Vy
                 next_instruction.set_disassembled(format!("SNE V{:01X}, V{:01X}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().y));
-                next_instruction.set_callback(sne_reg_reg);
+                next_instruction.set_callback(instruction::sne_reg_reg);
             }
             0xA => {
                 // Met la valeur du registre I à nnn.
                 next_instruction.set_disassembled(format!("LD I, ${:04X}", next_instruction.borrow_operands().nnn));
-                next_instruction.set_callback(ld_i_addr);
+                next_instruction.set_callback(instruction::ld_i_addr);
             }
             0xB => {
                 // Saute à l'adresse nnn + V0
                 next_instruction.set_disassembled(format!("JP V0, ${:04X}", next_instruction.borrow_operands().nnn));
-                next_instruction.set_callback(jp_v0_addr);
+                next_instruction.set_callback(instruction::jp_v0_addr);
             }
             0xC => {
                 // Vx = random byte AND kk
                 next_instruction.set_disassembled(format!("RND V{:01X}, {:02X}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().kk));
-                next_instruction.set_callback(rnd_reg_byte);
+                next_instruction.set_callback(instruction::rnd_reg_byte);
             }
             0xD => {
                 next_instruction.set_disassembled(format!("DRW V{:01X}, V{:01X}, {}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().y, next_instruction.borrow_operands().nibble));
-                next_instruction.set_callback(drw_reg_reg_nibble);
+                next_instruction.set_callback(instruction::drw_reg_reg_nibble);
             }
             0xE => match instruction & 0x00FF {
                 0x9E => {
                     // Ignore l'instruction suivante si la touche Vx est appuyée.
                     next_instruction.set_disassembled(format!("SKP V{:01X}", next_instruction.borrow_operands().x));
-                    next_instruction.set_callback(skp_reg);
+                    next_instruction.set_callback(instruction::skp_reg);
                 }
                 0xA1 => {
                     // Ignore l'instruction suivante si la touche Vx n'est pas appuyée.
                     next_instruction.set_disassembled(format!("SKNP V{:01X}", next_instruction.borrow_operands().x));
-                    next_instruction.set_callback(sknp_reg);
+                    next_instruction.set_callback(instruction::sknp_reg);
                 }
                 _ => {}
             },
@@ -314,48 +312,48 @@ impl<'a> Chip8<'a> {
                 0x07 => {
                     // Vx = DT
                     next_instruction.set_disassembled(format!("LD V{:01X}, DT", next_instruction.borrow_operands().x));
-                    next_instruction.set_callback(ld_reg_dt);
+                    next_instruction.set_callback(instruction::ld_reg_dt);
                 }
                 0x0A => {
                     // Attend qu'une touche soit pressée puis stock la valeur de la touche dans Vx.
                     // Instruction bloquante.
                     next_instruction.set_disassembled(format!("LD V{:01X}, K", next_instruction.borrow_operands().x));
-                    next_instruction.set_callback(ld_reg_k);
+                    next_instruction.set_callback(instruction::ld_reg_k);
                 }
                 0x15 => {
                     // DT = Vx
                     next_instruction.set_disassembled(format!("LD DT, V{:01X}", next_instruction.borrow_operands().x));
-                    next_instruction.set_callback(ld_dt_reg);
+                    next_instruction.set_callback(instruction::ld_dt_reg);
                 }
                 0x18 => {
                     // ST = Vx
                     next_instruction.set_disassembled(format!("LD ST, V{:01X}", next_instruction.borrow_operands().x));
-                    next_instruction.set_callback(ld_st_reg);
+                    next_instruction.set_callback(instruction::ld_st_reg);
                 }
                 0x1E => {
                     // I = I + Vx
                     next_instruction.set_disassembled(format!("ADD I, V{:01X}", next_instruction.borrow_operands().x));
-                    next_instruction.set_callback(add_i_reg);
+                    next_instruction.set_callback(instruction::add_i_reg);
                 }
                 0x29 => {
                     // L'adresse vers le caractère Vx est stockée dans le registre I.
                     next_instruction.set_disassembled(format!("LD I, V{:01X}", next_instruction.borrow_operands().x));
-                    next_instruction.set_callback(ld_i_reg);
+                    next_instruction.set_callback(instruction::ld_i_reg);
                 }
                 0x33 => {
                     // Stock la représentation BCD de Vx dans les adresses à partir de I.
                     next_instruction.set_disassembled(format!("LD B, V{:01X}", next_instruction.borrow_operands().x));
-                    next_instruction.set_callback(ld_b_reg);
+                    next_instruction.set_callback(instruction::ld_b_reg);
                 }
                 0x55 => {
                     // Stock tous les registres à partir de V0 à Vx dans la mémoire à partir de l'adresse I.
                     next_instruction.set_disassembled(format!("LD [I], V{:01X}", next_instruction.borrow_operands().x));
-                    next_instruction.set_callback(ld_to_i_reg);
+                    next_instruction.set_callback(instruction::ld_to_i_reg);
                 }
                 0x65 => {
                     // Lit les registres de V0 à Vx depuis la mémoire à partir de l'adresse I.
                     next_instruction.set_disassembled(format!("LD V{:01X}, [I]", next_instruction.borrow_operands().x));
-                    next_instruction.set_callback(ld_reg_from_i);
+                    next_instruction.set_callback(instruction::ld_reg_from_i);
                 }
                 _ => (),
             },
@@ -432,339 +430,3 @@ impl<'a> Chip8<'a> {
     }
 }
 
-fn clean_screen(_: u16, _: &Operands, _: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], screen: &mut [u8], callbacks: &mut Chip8Callback) {
-    (callbacks.clear_pixel)(&mut callbacks.callback_data);
-
-    screen.fill(0);
-
-    registers.pc += 2;
-}
-
-fn ret(_: u16, _: &Operands, _: &mut Memory, stack: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    registers.sp -= 2;
-    registers.pc = stack.read16(registers.sp as u16).unwrap() + 2;
-}
-
-fn jp_addr(_: u16, operands: &Operands, _: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    registers.pc = operands.nnn;
-}
-
-fn call_addr(_: u16, operands: &Operands, _: &mut Memory, stack: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    // Stock dans la pile l'adresse actuelle.
-    if let Err(_err) = stack.write16(registers.sp as u16, registers.pc) {
-        return (); // TODO: Err(err);
-    }
-
-    registers.sp += 2;
-
-    registers.pc = operands.nnn;
-}
-
-fn se_reg_byte(_: u16, operands: &Operands, _: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    if registers.v[operands.x as usize] == operands.kk {
-        registers.pc += 4;
-    } else {
-        registers.pc += 2;
-    }
-}
-
-fn sne_reg_byte(_: u16, operands: &Operands, _: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    if registers.v[operands.x as usize] != operands.kk {
-        registers.pc += 4;
-    } else {
-        registers.pc += 2;
-    }
-}
-
-fn se_reg_reg(_: u16, operands: &Operands, _: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    if registers.v[operands.x as usize] == registers.v[operands.y as usize] {
-        registers.pc += 4;
-    } else {
-        registers.pc += 2;
-    }
-}
-
-fn ld_reg_byte(_: u16, operands: &Operands, _: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    registers.v[operands.x as usize] = operands.kk;
-
-    registers.pc += 2;
-}
-
-fn add_reg_byte(_: u16, operands: &Operands, _: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    registers.v[operands.x as usize] = registers.v[operands.x as usize].wrapping_add(operands.kk);
-
-    registers.pc += 2;
-}
-
-fn ld_reg_reg(_: u16, operands: &Operands, _: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    registers.v[operands.x as usize] = registers.v[operands.y as usize];
-
-    registers.pc += 2;
-}
-
-fn or_reg_reg(_: u16, operands: &Operands, _: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    registers.v[operands.x as usize] = registers.v[operands.x as usize] | registers.v[operands.y as usize];
-
-    registers.pc += 2;
-}
-
-fn and_reg_reg(_: u16, operands: &Operands, _: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    registers.v[operands.x as usize] = registers.v[operands.x as usize] & registers.v[operands.y as usize];
-
-    registers.pc += 2;
-}
-
-fn xor_reg_reg(_: u16, operands: &Operands, _: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    registers.v[operands.x as usize] = registers.v[operands.x as usize] ^ registers.v[operands.y as usize];
-
-    registers.pc += 2;
-}
-
-fn add_reg_reg(_: u16, operands: &Operands, _: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    let result = registers.v[operands.x as usize] as u16 + registers.v[operands.y as usize] as u16;
-
-    registers.v[0xF] = (result > 255) as u8;
-    registers.v[operands.x as usize] = (result & 0xFF) as u8;
-
-    registers.pc += 2;
-}
-
-fn sub_reg_reg(_: u16, operands: &Operands, _: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    // Si Vx > Vy, met la valeur de VF à 1.
-    registers.v[0xF] = (registers.v[operands.x as usize] > registers.v[operands.y as usize]) as u8;
-
-    registers.v[operands.x as usize] = registers.v[operands.x as usize].wrapping_sub(registers.v[operands.y as usize]);
-
-    registers.pc += 2;
-}
-
-fn shr_reg_reg(_: u16, operands: &Operands, _: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    // Récupère la valeur actuelle de Vx.
-    let value = registers.v[operands.x as usize];
-
-    // Si le bit de poids faible est à 1, met VF à 1.
-    registers.v[0xF] = ((value & 0x1) > 0) as u8;
-
-    // Décale de 1 bit vers la droite.
-
-    registers.v[operands.x as usize] = value >> 1;
-
-    registers.pc += 2;
-}
-
-fn subn_reg_reg(_: u16, operands: &Operands, _: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    // Si Vy > Vx, met la valeur de VF à 1.
-    registers.v[0xF] = (registers.v[operands.y as usize] > registers.v[operands.x as usize]) as u8;
-
-    registers.v[operands.x as usize] = registers.v[operands.y as usize] - registers.v[operands.x as usize];
-
-    registers.pc += 2;
-}
-
-fn shl_reg_reg(_: u16, operands: &Operands, _: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    let value = registers.v[operands.x as usize];
-
-    // Si le bit de poids fort est à 1, met VF à 1.
-    registers.v[0xF] = ((value & 0x80) > 0) as u8;
-
-    // Décale de Vy bits vers la gauche.
-    registers.v[operands.x as usize] = value << 1;
-
-    registers.pc += 2;
-}
-
-fn sne_reg_reg(_: u16, operands: &Operands, _: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    if registers.v[operands.x as usize] != registers.v[operands.y as usize] {
-        registers.pc += 4;
-    } else {
-        registers.pc += 2;
-    }
-}
-
-fn ld_i_addr(_: u16, operands: &Operands, _: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    registers.i = operands.nnn;
-
-    registers.pc += 2;
-}
-
-fn jp_v0_addr(_: u16, operands: &Operands, _: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    registers.pc = operands.nnn + registers.v[0x0] as u16;
-}
-
-fn rnd_reg_byte(_: u16, operands: &Operands, _: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    let mut rng = rand::thread_rng();
-
-    let random_number = rng.gen_range(0..256) as u8;
-
-    registers.v[operands.x as usize] = random_number & operands.kk;
-
-    registers.pc += 2;
-}
-
-fn drw_reg_reg_nibble(_: u16, operands: &Operands, ram: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], screen: &mut [u8], callbacks: &mut Chip8Callback) {
-    // Initialise le Carry Flag à 0.
-    registers.v[0xF] = 0;
-
-    if operands.x > 0xF || operands.y > 0xF {
-        eprintln!("[CHIP-8] Error when drawing: x or y out of bound: {:02x} {:02x}", operands.x, operands.y);
-
-        return ();
-    }
-
-    // Un sprite ne peut pas faire plus de 15 pixels de hauteur.
-    if operands.nibble > 15 {
-        eprintln!("[CHIP-8] Error when drawing: nibble is out of bound: {}", operands.nibble);
-
-        return ();
-    }
-
-    // Pour chaque ligne du sprite à afficher.
-    for row in 0..operands.nibble {
-        // Si le pixel sort de l'écran vers le bas, le ramène en haut de l'écran.
-        // 'wrapping_add' est une fonction qui permet d'ajouter un entier sans paniquer
-        // s'il y a un overflow.
-        let yy = (registers.v[operands.y as usize].wrapping_add(row)) % 32;
-
-        let sprite = match ram.read8(registers.i + row as u16) {
-            Ok(o) => o,
-            Err(_err) => return (), // TODO: Err(err),
-        };
-
-        // Pour chaque bit de l'octet.
-        for col in 0..8 {
-            // Si le pixel sort de l'écran vers la droite, le ramène à gauche de
-            // l'écran.
-            let xx = (registers.v[operands.x as usize] + col) % 64;
-
-            // Récupère l'état du pixel actuellement affiché à l'écran.
-            let current_pixel =
-                screen.get_mut(yy as usize * 64 + xx as usize).unwrap();
-
-            // Le dernier décalement vers la droite permet de récupérer uniquement le
-            // dernier bit.
-            let sprite_bit = (sprite & (0x80 >> col)) >> (7 - col);
-
-            // Si on veut allumer alors que c'est déjà allumé, on éteint.
-            if (sprite_bit & *current_pixel) != 0 {
-                // Le Carry Flag est mit à 1 lorsqu'un pixel est éteint car il y a une collision.
-                registers.v[0xF] = 1;
-            }
-
-            // Les spécifications indiquent que le pixel actuel doit être XORed avec le
-            // sprite.
-            *current_pixel ^= sprite_bit;
-
-            if *current_pixel != 0 {
-                (callbacks.set_pixel)(&mut callbacks.callback_data, xx, yy);
-            } else {
-                (callbacks.unset_pixel)(&mut callbacks.callback_data, xx, yy);
-            }
-        }
-    }
-
-    registers.pc += 2;
-}
-
-fn skp_reg(_: u16, operands: &Operands, _: &mut Memory, _: &mut Memory, registers: &mut Registers, keys: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    if keys[registers.v[operands.x as usize] as usize] {
-        registers.pc += 4;
-    } else {
-        registers.pc += 2;
-    }
-}
-
-fn sknp_reg(_: u16, operands: &Operands, _: &mut Memory, _: &mut Memory, registers: &mut Registers, keys: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    if !keys[registers.v[operands.x as usize] as usize] {
-        registers.pc += 4;
-    } else {
-        registers.pc += 2;
-    }
-}
-
-fn ld_reg_dt(_: u16, operands: &Operands, _: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    registers.v[operands.x as usize] = registers.dt;
-
-    registers.pc += 2;
-}
-
-fn ld_reg_k(_: u16, operands: &Operands, _: &mut Memory, _: &mut Memory, registers: &mut Registers, keys: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    // Cela peut être n'importe quelle touche.
-    if let Some(index) = keys.iter().position(|&pressed| pressed) {
-        registers.v[operands.x as usize] = index as u8;
-
-        registers.pc += 2;
-    }
-}
-
-fn ld_dt_reg(_: u16, operands: &Operands, _: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    registers.dt = registers.v[operands.x as usize];
-
-    registers.pc += 2;
-}
-
-fn ld_st_reg(_: u16, operands: &Operands, _: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    registers.st = registers.v[operands.x as usize];
-
-    registers.pc += 2;
-}
-
-fn add_i_reg(_: u16, operands: &Operands, _: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    registers.i += registers.v[operands.x as usize] as u16;
-
-    registers.pc += 2;
-}
-
-fn ld_i_reg(_: u16, operands: &Operands, _: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    // Comme les sprites sont stockées au tout début de la RAM, il n'y a pas besoin
-    // de faire de calcul.
-    registers.i = (registers.v[operands.x as usize] as u16) * 5;
-
-    registers.pc += 2;
-}
-
-fn ld_b_reg(_: u16, operands: &Operands, ram: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    let mut value = registers.v[operands.x as usize];
-                    
-    if let Err(_err) = ram.write8(registers.i + 2, value % 10) {
-        return (); // TODO: Err(err);
-    }
-
-    value /= 10;
-
-    if let Err(_err) = ram.write8(registers.i + 1, value % 10) {
-        return (); // TODO: Err(err);
-    }
-
-    value /= 10;
-    
-    if let Err(_err) = ram.write8(registers.i, value % 10) {
-        return (); // TODO: Err(err);
-    }
-
-    registers.pc += 2;
-}
-
-fn ld_to_i_reg(_: u16, operands: &Operands, ram: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    for index in 0..operands.x + 1 {
-        if let Err(err) = ram.write8(registers.i + index as u16, registers.v[index as usize]) {
-            eprintln!("[CHIP-8 error] {err}");
-            return (); // TODO: Err(err);
-        }
-    }
-
-    registers.pc += 2;
-}
-
-fn ld_reg_from_i(_: u16, operands: &Operands, ram: &mut Memory, _: &mut Memory, registers: &mut Registers, _: &[bool], _: &mut [u8], _: &mut Chip8Callback) {
-    for index in 0..operands.x + 1 {
-        registers.v[index as usize] = match ram.read8(registers.i + index as u16) {
-            Ok(o) => o,
-            Err(err) => {
-                eprintln!("[CHIP-8 error] {err}");
-                return ();
-             } // TODO: Err(err),
-        }
-    }
-
-    registers.pc += 2;
-}
