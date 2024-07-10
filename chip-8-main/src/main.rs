@@ -4,10 +4,7 @@ use std::{cell::RefCell, env, rc::Rc};
 
 use callback::update_callback;
 use chip_8_interpreter::chip::{CallbackData, Chip8};
-use chip_8_rendering::{
-    renderer::RendererParams,
-    window::{UserData, Window},
-};
+use chip_8_rendering::{renderer::RendererManager, types::UserData, window::window::Window};
 
 pub struct Config {
     pub auto_next_instruction: bool,
@@ -24,57 +21,53 @@ fn main() -> Result<(), String> {
 
     println!("Loading program \"{}\"...", config.program_name);
 
+    let renderer_manager = RendererManager::new();
+
     let mut chip8 = Chip8::build(&format!("Builtin/Programs/{}", config.program_name))?;
 
-    let mut window = match Window::new("CHIP-8 emulator", 700, 400) {
+    let mut window = match Window::new("CHIP-8 emulator", 700, 400, &mut renderer_manager.borrow_mut()) {
         Ok(w) => w,
         Err(e) => return Err(e),
     };
 
-    let renderer_params = match window.create_renderer() {
-        Ok(t) => Rc::new(RefCell::new(t)),
-        Err(err) => return Err(err),
-    };
-
-    match renderer_params
-        .borrow_mut()
-        .renderer
-        .init_resources()
-    {
-        Ok(_) => {}
-        Err(err) => {
-            return Err(err);
+    if let Some(renderer) = renderer_manager.borrow_mut().borrow_mut_renderer(window.get_renderer_name()) {
+        match renderer.init_resources() {
+            Ok(_) => {}
+            Err(err) => {
+                return Err(err);
+            }
         }
+    } else {
+        return Err(format!("Cannot find renderer named \"{}\"", window.get_renderer_name()));
     }
+
+    
 
     let callbacks = chip8.borrow_mut_callbacks();
 
-    callbacks.set_callback_data(CallbackData::new(Box::new(Rc::clone(&renderer_params))));
+    callbacks.set_callback_data(CallbackData::new(Box::new(Rc::clone(&renderer_manager))));
+
     callbacks.set_clear_pixel_callback(|callback_data| {
-        if let Some(renderer) = callback_data.get::<Rc<RefCell<RendererParams>>>() {
-            renderer
-                .borrow_mut()
-                .renderer
-                .clear_grid_pixel()
-                .unwrap();
+        if let Some(renderer_manager) = callback_data.get::<Rc<RefCell<RendererManager>>>() {
+            if let Some(renderer) = renderer_manager.borrow_mut().borrow_mut_renderer("0") {
+                let _ = renderer.clear_grid_pixel();
+            }
         }
     });
+
     callbacks.set_set_pixel_callback(|callback_data, x, y| {
-        if let Some(renderer) = callback_data.get::<Rc<RefCell<RendererParams>>>() {
-            renderer
-                .borrow_mut()
-                .renderer
-                .set_grid_pixel(x as usize, y as usize, true)
-                .unwrap();
+        if let Some(renderer_manager) = callback_data.get::<Rc<RefCell<RendererManager>>>() {
+            if let Some(renderer) = renderer_manager.borrow_mut().borrow_mut_renderer("0") {
+                let _ = renderer.set_grid_pixel(x as usize, y as usize, true);
+            }
         }
     });
+
     callbacks.set_unset_pixel_callback(|callback_data, x, y| {
-        if let Some(renderer) = callback_data.get::<Rc<RefCell<RendererParams>>>() {
-            renderer
-                .borrow_mut()
-                .renderer
-                .set_grid_pixel(x as usize, y as usize, false)
-                .unwrap();
+        if let Some(renderer_manager) = callback_data.get::<Rc<RefCell<RendererManager>>>() {
+            if let Some(renderer) = renderer_manager.borrow_mut().borrow_mut_renderer("0") {
+                let _ = renderer.set_grid_pixel(x as usize, y as usize, false);
+            }
         }
     });
 
@@ -83,7 +76,7 @@ fn main() -> Result<(), String> {
     window.set_update_callback(update_callback, user_data);
 
     println!("Emulator is ready!");
-    match window.run(renderer_params) {
+    match window.run(renderer_manager) {
         Ok(_) => {}
         Err(err) => return Err(err),
     }
