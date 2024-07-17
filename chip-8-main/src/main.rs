@@ -4,7 +4,7 @@ use std::{cell::RefCell, env, rc::Rc};
 
 use callback::update_callback;
 use chip_8_interpreter::chip::{CallbackData, Chip8};
-use chip_8_rendering::{renderer::RendererManager, types::UserData, window::window::Window};
+use graph_punk::{renderer::RendererManager, types::UserData, window::window::Window};
 
 pub struct Config {
     pub auto_next_instruction: bool,
@@ -25,12 +25,20 @@ fn main() -> Result<(), String> {
 
     let mut chip8 = Chip8::build(&format!("Builtin/Programs/{}", config.program_name))?;
 
-    let mut window = match Window::new("CHIP-8 emulator", 700, 400, &mut renderer_manager.borrow_mut()) {
+    let mut window = match Window::new(
+        "CHIP-8 emulator",
+        700,
+        400,
+        &mut renderer_manager.borrow_mut(),
+    ) {
         Ok(w) => w,
         Err(e) => return Err(e),
     };
 
-    if let Some(renderer) = renderer_manager.borrow_mut().borrow_mut_renderer(window.get_renderer_name()) {
+    if let Some(renderer) = renderer_manager
+        .borrow_mut()
+        .borrow_mut_renderer(window.get_renderer_name())
+    {
         match renderer.init_resources() {
             Ok(_) => {}
             Err(err) => {
@@ -38,10 +46,11 @@ fn main() -> Result<(), String> {
             }
         }
     } else {
-        return Err(format!("Cannot find renderer named \"{}\"", window.get_renderer_name()));
+        return Err(format!(
+            "Cannot find renderer named \"{}\"",
+            window.get_renderer_name()
+        ));
     }
-
-    
 
     let callbacks = chip8.borrow_mut_callbacks();
 

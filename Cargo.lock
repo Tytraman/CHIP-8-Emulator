@@ -26,15 +26,7 @@ name = "chip-8-main"
 version = "0.1.0"
 dependencies = [
  "chip-8-interpreter",
- "chip-8-rendering",
-]
-
-[[package]]
-name = "chip-8-rendering"
-version = "0.1.0"
-dependencies = [
- "gl",
- "sdl2",
+ "graph-punk",
 ]
 
 [[package]]
@@ -66,6 +58,15 @@ dependencies = [
  "khronos_api",
  "log",
  "xml-rs",
+]
+
+[[package]]
+name = "graph-punk"
+version = "0.1.0"
+source = "git+https://github.com/Tytraman/Graph-Punk.git#17fb0b171bb00cf84a5a1a5d5bb9015ebdf686ff"
+dependencies = [
+ "gl",
+ "sdl2",
 ]
 
 [[package]]

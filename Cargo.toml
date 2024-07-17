@@ -1,7 +1,6 @@
 [workspace]
 resolver = "2"
 members = [
-    "chip-8-rendering",
     "chip-8-interpreter",
     "chip-8-main"
 ]

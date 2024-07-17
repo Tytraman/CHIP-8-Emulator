@@ -4,5 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-chip-8-rendering = { path = "../chip-8-rendering" }
+graph-punk = { git = "https://github.com/Tytraman/Graph-Punk.git" }
 chip-8-interpreter = { path = "../chip-8-interpreter" }
+
+[[bin]]
+name = "CHIP-8"
+path = "src/main.rs"
