@@ -63,7 +63,7 @@ dependencies = [
 [[package]]
 name = "graph-punk"
 version = "0.1.0"
-source = "git+https://github.com/Tytraman/Graph-Punk.git#17fb0b171bb00cf84a5a1a5d5bb9015ebdf686ff"
+source = "git+https://github.com/Tytraman/Graph-Punk#d6e635c4e9afd0fb22772f560b64ef529cdeabe0"
 dependencies = [
  "gl",
  "sdl2",

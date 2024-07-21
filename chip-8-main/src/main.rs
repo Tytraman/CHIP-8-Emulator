@@ -4,7 +4,9 @@ use std::{cell::RefCell, env, rc::Rc};
 
 use callback::update_callback;
 use chip_8_interpreter::chip::{CallbackData, Chip8};
-use graph_punk::{renderer::RendererManager, types::UserData, window::window::Window};
+use graph_punk::{
+    maths::vec::Vec2, renderer::RendererManager, types::UserData, window::window::Window,
+};
 
 pub struct Config {
     pub auto_next_instruction: bool,
@@ -29,27 +31,18 @@ fn main() -> Result<(), String> {
         "CHIP-8 emulator",
         700,
         400,
+        Vec2 { x: 64, y: 32 },
         &mut renderer_manager.borrow_mut(),
     ) {
         Ok(w) => w,
         Err(e) => return Err(e),
     };
 
-    if let Some(renderer) = renderer_manager
+    if let Err(err) = renderer_manager
         .borrow_mut()
-        .borrow_mut_renderer(window.get_renderer_name())
+        .init_resources(window.get_renderer_name())
     {
-        match renderer.init_resources() {
-            Ok(_) => {}
-            Err(err) => {
-                return Err(err);
-            }
-        }
-    } else {
-        return Err(format!(
-            "Cannot find renderer named \"{}\"",
-            window.get_renderer_name()
-        ));
+        return Err(err);
     }
 
     let callbacks = chip8.borrow_mut_callbacks();

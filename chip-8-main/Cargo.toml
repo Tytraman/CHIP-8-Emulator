@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-graph-punk = { git = "https://github.com/Tytraman/Graph-Punk.git" }
+graph-punk = { git = "https://github.com/Tytraman/Graph-Punk" }
 chip-8-interpreter = { path = "../chip-8-interpreter" }
 
 [[bin]]

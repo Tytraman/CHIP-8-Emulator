@@ -1,9 +1,9 @@
 #version 330 core
 out vec4 FragColor;
 
-uniform vec4 chip_color;
+uniform vec4 punk_color;
 
 void main()
 {
-    FragColor = chip_color;
+    FragColor = punk_color;
 } 

@@ -2,9 +2,10 @@
 
 layout (location = 0) in vec3 aPos;
 
-uniform mat4 chip_transform;
+uniform mat4 punk_model;
+uniform mat4 punk_projection;
 
 void main()
 {
-    gl_Position = chip_transform * vec4(aPos, 1.0f);
+    gl_Position = punk_projection * punk_model * vec4(aPos, 1.0f);
 }
