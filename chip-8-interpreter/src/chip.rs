@@ -1,6 +1,14 @@
-use std::{any::Any, fs, time::{Duration, Instant}};
+use std::{
+    any::Any,
+    fs,
+    time::{Duration, Instant},
+};
 
-use crate::{instruction::{self, Instruction}, memory::Memory, register::Registers};
+use crate::{
+    instruction::{self, Instruction},
+    memory::Memory,
+    register::Registers,
+};
 
 pub struct CallbackData {
     data: Option<Box<dyn Any>>,
@@ -184,126 +192,214 @@ impl<'a> Chip8<'a> {
                     }
                     _ => {
                         // Ignorée par les interpréteurs modernes.
-                        next_instruction.set_disassembled(format!("SYS ${:04X}", next_instruction.borrow_operands().nnn));
+                        next_instruction.set_disassembled(format!(
+                            "SYS ${:04X}",
+                            next_instruction.borrow_operands().nnn
+                        ));
                     }
                 }
             }
             0x1 => {
                 // Met la valeur du registre PC à nnn.
-                next_instruction.set_disassembled(format!("JP ${:04X}", next_instruction.borrow_operands().nnn));
+                next_instruction.set_disassembled(format!(
+                    "JP ${:04X}",
+                    next_instruction.borrow_operands().nnn
+                ));
                 next_instruction.set_callback(instruction::jp_addr);
             }
             0x2 => {
                 // Appelle la fonction située à l'adresse nnn.
-                next_instruction.set_disassembled(format!("CALL ${:04X}", next_instruction.borrow_operands().nnn));
+                next_instruction.set_disassembled(format!(
+                    "CALL ${:04X}",
+                    next_instruction.borrow_operands().nnn
+                ));
                 next_instruction.set_callback(instruction::call_addr);
             }
             0x3 => {
                 // Ignore la prochaine instruction si Vx == kk
-                next_instruction.set_disassembled(format!("SE V{:01X}, {:02X}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().kk));
+                next_instruction.set_disassembled(format!(
+                    "SE V{:01X}, {:02X}",
+                    next_instruction.borrow_operands().x,
+                    next_instruction.borrow_operands().kk
+                ));
                 next_instruction.set_callback(instruction::se_reg_byte);
             }
             0x4 => {
                 // Ignore la prochaine instruction si Vx != kk
-                next_instruction.set_disassembled(format!("SNE V{:01X}, {:02X}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().kk));
+                next_instruction.set_disassembled(format!(
+                    "SNE V{:01X}, {:02X}",
+                    next_instruction.borrow_operands().x,
+                    next_instruction.borrow_operands().kk
+                ));
                 next_instruction.set_callback(instruction::sne_reg_byte);
             }
             0x5 => {
                 // Ignore la prochaine instruction si Vx == Vy
-                next_instruction.set_disassembled(format!("SE V{:01X}, V{:01X}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().y));
+                next_instruction.set_disassembled(format!(
+                    "SE V{:01X}, V{:01X}",
+                    next_instruction.borrow_operands().x,
+                    next_instruction.borrow_operands().y
+                ));
                 next_instruction.set_callback(instruction::se_reg_reg);
             }
             0x6 => {
                 // Met la valeur kk dans le registre Vx.
-                next_instruction.set_disassembled(format!("LD V{:01X}, {:02X}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().kk));
+                next_instruction.set_disassembled(format!(
+                    "LD V{:01X}, {:02X}",
+                    next_instruction.borrow_operands().x,
+                    next_instruction.borrow_operands().kk
+                ));
                 next_instruction.set_callback(instruction::ld_reg_byte);
             }
             0x7 => {
                 // Vx = Vx + kk
-                next_instruction.set_disassembled(format!("ADD V{:01X}, {:02X}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().kk));
+                next_instruction.set_disassembled(format!(
+                    "ADD V{:01X}, {:02X}",
+                    next_instruction.borrow_operands().x,
+                    next_instruction.borrow_operands().kk
+                ));
                 next_instruction.set_callback(instruction::add_reg_byte);
             }
             0x8 => match instruction & 0x000F {
                 0x0 => {
                     // Vx = Vy
-                    next_instruction.set_disassembled(format!("LD V{:01X}, V{:01X}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().y));
+                    next_instruction.set_disassembled(format!(
+                        "LD V{:01X}, V{:01X}",
+                        next_instruction.borrow_operands().x,
+                        next_instruction.borrow_operands().y
+                    ));
                     next_instruction.set_callback(instruction::ld_reg_reg);
                 }
                 0x1 => {
                     // Vx = Vx | Vy
-                    next_instruction.set_disassembled(format!("OR V{:01X}, V{:01X}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().y));
+                    next_instruction.set_disassembled(format!(
+                        "OR V{:01X}, V{:01X}",
+                        next_instruction.borrow_operands().x,
+                        next_instruction.borrow_operands().y
+                    ));
                     next_instruction.set_callback(instruction::or_reg_reg);
                 }
                 0x2 => {
                     // Vx = Vx & Vy
-                    next_instruction.set_disassembled(format!("AND V{:01X}, V{:01X}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().y));
+                    next_instruction.set_disassembled(format!(
+                        "AND V{:01X}, V{:01X}",
+                        next_instruction.borrow_operands().x,
+                        next_instruction.borrow_operands().y
+                    ));
                     next_instruction.set_callback(instruction::and_reg_reg);
                 }
                 0x3 => {
                     // Vx = Vx ^ Vy
-                    next_instruction.set_disassembled(format!("XOR V{:01X}, V{:01X}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().y));
+                    next_instruction.set_disassembled(format!(
+                        "XOR V{:01X}, V{:01X}",
+                        next_instruction.borrow_operands().x,
+                        next_instruction.borrow_operands().y
+                    ));
                     next_instruction.set_callback(instruction::xor_reg_reg);
                 }
                 0x4 => {
                     // Vx = Vx + Vy
-                    next_instruction.set_disassembled(format!("ADD V{:01X}, V{:01X}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().y));
+                    next_instruction.set_disassembled(format!(
+                        "ADD V{:01X}, V{:01X}",
+                        next_instruction.borrow_operands().x,
+                        next_instruction.borrow_operands().y
+                    ));
                     next_instruction.set_callback(instruction::add_reg_reg);
                 }
                 0x5 => {
                     // Vx = Vx - Vy
-                    next_instruction.set_disassembled(format!("SUB V{:01X}, V{:01X}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().y));
+                    next_instruction.set_disassembled(format!(
+                        "SUB V{:01X}, V{:01X}",
+                        next_instruction.borrow_operands().x,
+                        next_instruction.borrow_operands().y
+                    ));
                     next_instruction.set_callback(instruction::sub_reg_reg);
                 }
                 0x6 => {
                     // Vx = Vx >> Vy
-                    next_instruction.set_disassembled(format!("SHR V{:01X}", next_instruction.borrow_operands().x));
+                    next_instruction.set_disassembled(format!(
+                        "SHR V{:01X}",
+                        next_instruction.borrow_operands().x
+                    ));
                     next_instruction.set_callback(instruction::shr_reg_reg);
                 }
                 0x7 => {
                     // Vx = Vy - Vx
-                    next_instruction.set_disassembled(format!("SUBN V{:01X}, V{:01X}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().y));
+                    next_instruction.set_disassembled(format!(
+                        "SUBN V{:01X}, V{:01X}",
+                        next_instruction.borrow_operands().x,
+                        next_instruction.borrow_operands().y
+                    ));
                     next_instruction.set_callback(instruction::subn_reg_reg);
                 }
                 0xE => {
                     // Vx = Vx << Vy
-                    next_instruction.set_disassembled(format!("SHL V{:01X}", next_instruction.borrow_operands().x));
+                    next_instruction.set_disassembled(format!(
+                        "SHL V{:01X}",
+                        next_instruction.borrow_operands().x
+                    ));
                     next_instruction.set_callback(instruction::shl_reg_reg);
                 }
                 _ => (),
             },
             0x9 => {
                 // Ignore la prochaine instruction si Vx != Vy
-                next_instruction.set_disassembled(format!("SNE V{:01X}, V{:01X}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().y));
+                next_instruction.set_disassembled(format!(
+                    "SNE V{:01X}, V{:01X}",
+                    next_instruction.borrow_operands().x,
+                    next_instruction.borrow_operands().y
+                ));
                 next_instruction.set_callback(instruction::sne_reg_reg);
             }
             0xA => {
                 // Met la valeur du registre I à nnn.
-                next_instruction.set_disassembled(format!("LD I, ${:04X}", next_instruction.borrow_operands().nnn));
+                next_instruction.set_disassembled(format!(
+                    "LD I, ${:04X}",
+                    next_instruction.borrow_operands().nnn
+                ));
                 next_instruction.set_callback(instruction::ld_i_addr);
             }
             0xB => {
                 // Saute à l'adresse nnn + V0
-                next_instruction.set_disassembled(format!("JP V0, ${:04X}", next_instruction.borrow_operands().nnn));
+                next_instruction.set_disassembled(format!(
+                    "JP V0, ${:04X}",
+                    next_instruction.borrow_operands().nnn
+                ));
                 next_instruction.set_callback(instruction::jp_v0_addr);
             }
             0xC => {
                 // Vx = random byte AND kk
-                next_instruction.set_disassembled(format!("RND V{:01X}, {:02X}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().kk));
+                next_instruction.set_disassembled(format!(
+                    "RND V{:01X}, {:02X}",
+                    next_instruction.borrow_operands().x,
+                    next_instruction.borrow_operands().kk
+                ));
                 next_instruction.set_callback(instruction::rnd_reg_byte);
             }
             0xD => {
-                next_instruction.set_disassembled(format!("DRW V{:01X}, V{:01X}, {}", next_instruction.borrow_operands().x, next_instruction.borrow_operands().y, next_instruction.borrow_operands().nibble));
+                next_instruction.set_disassembled(format!(
+                    "DRW V{:01X}, V{:01X}, {}",
+                    next_instruction.borrow_operands().x,
+                    next_instruction.borrow_operands().y,
+                    next_instruction.borrow_operands().nibble
+                ));
                 next_instruction.set_callback(instruction::drw_reg_reg_nibble);
             }
             0xE => match instruction & 0x00FF {
                 0x9E => {
                     // Ignore l'instruction suivante si la touche Vx est appuyée.
-                    next_instruction.set_disassembled(format!("SKP V{:01X}", next_instruction.borrow_operands().x));
+                    next_instruction.set_disassembled(format!(
+                        "SKP V{:01X}",
+                        next_instruction.borrow_operands().x
+                    ));
                     next_instruction.set_callback(instruction::skp_reg);
                 }
                 0xA1 => {
                     // Ignore l'instruction suivante si la touche Vx n'est pas appuyée.
-                    next_instruction.set_disassembled(format!("SKNP V{:01X}", next_instruction.borrow_operands().x));
+                    next_instruction.set_disassembled(format!(
+                        "SKNP V{:01X}",
+                        next_instruction.borrow_operands().x
+                    ));
                     next_instruction.set_callback(instruction::sknp_reg);
                 }
                 _ => {}
@@ -311,48 +407,75 @@ impl<'a> Chip8<'a> {
             0xF => match instruction & 0x00FF {
                 0x07 => {
                     // Vx = DT
-                    next_instruction.set_disassembled(format!("LD V{:01X}, DT", next_instruction.borrow_operands().x));
+                    next_instruction.set_disassembled(format!(
+                        "LD V{:01X}, DT",
+                        next_instruction.borrow_operands().x
+                    ));
                     next_instruction.set_callback(instruction::ld_reg_dt);
                 }
                 0x0A => {
                     // Attend qu'une touche soit pressée puis stock la valeur de la touche dans Vx.
                     // Instruction bloquante.
-                    next_instruction.set_disassembled(format!("LD V{:01X}, K", next_instruction.borrow_operands().x));
+                    next_instruction.set_disassembled(format!(
+                        "LD V{:01X}, K",
+                        next_instruction.borrow_operands().x
+                    ));
                     next_instruction.set_callback(instruction::ld_reg_k);
                 }
                 0x15 => {
                     // DT = Vx
-                    next_instruction.set_disassembled(format!("LD DT, V{:01X}", next_instruction.borrow_operands().x));
+                    next_instruction.set_disassembled(format!(
+                        "LD DT, V{:01X}",
+                        next_instruction.borrow_operands().x
+                    ));
                     next_instruction.set_callback(instruction::ld_dt_reg);
                 }
                 0x18 => {
                     // ST = Vx
-                    next_instruction.set_disassembled(format!("LD ST, V{:01X}", next_instruction.borrow_operands().x));
+                    next_instruction.set_disassembled(format!(
+                        "LD ST, V{:01X}",
+                        next_instruction.borrow_operands().x
+                    ));
                     next_instruction.set_callback(instruction::ld_st_reg);
                 }
                 0x1E => {
                     // I = I + Vx
-                    next_instruction.set_disassembled(format!("ADD I, V{:01X}", next_instruction.borrow_operands().x));
+                    next_instruction.set_disassembled(format!(
+                        "ADD I, V{:01X}",
+                        next_instruction.borrow_operands().x
+                    ));
                     next_instruction.set_callback(instruction::add_i_reg);
                 }
                 0x29 => {
                     // L'adresse vers le caractère Vx est stockée dans le registre I.
-                    next_instruction.set_disassembled(format!("LD I, V{:01X}", next_instruction.borrow_operands().x));
+                    next_instruction.set_disassembled(format!(
+                        "LD I, V{:01X}",
+                        next_instruction.borrow_operands().x
+                    ));
                     next_instruction.set_callback(instruction::ld_i_reg);
                 }
                 0x33 => {
                     // Stock la représentation BCD de Vx dans les adresses à partir de I.
-                    next_instruction.set_disassembled(format!("LD B, V{:01X}", next_instruction.borrow_operands().x));
+                    next_instruction.set_disassembled(format!(
+                        "LD B, V{:01X}",
+                        next_instruction.borrow_operands().x
+                    ));
                     next_instruction.set_callback(instruction::ld_b_reg);
                 }
                 0x55 => {
                     // Stock tous les registres à partir de V0 à Vx dans la mémoire à partir de l'adresse I.
-                    next_instruction.set_disassembled(format!("LD [I], V{:01X}", next_instruction.borrow_operands().x));
+                    next_instruction.set_disassembled(format!(
+                        "LD [I], V{:01X}",
+                        next_instruction.borrow_operands().x
+                    ));
                     next_instruction.set_callback(instruction::ld_to_i_reg);
                 }
                 0x65 => {
                     // Lit les registres de V0 à Vx depuis la mémoire à partir de l'adresse I.
-                    next_instruction.set_disassembled(format!("LD V{:01X}, [I]", next_instruction.borrow_operands().x));
+                    next_instruction.set_disassembled(format!(
+                        "LD V{:01X}, [I]",
+                        next_instruction.borrow_operands().x
+                    ));
                     next_instruction.set_callback(instruction::ld_reg_from_i);
                 }
                 _ => (),
@@ -369,7 +492,14 @@ impl<'a> Chip8<'a> {
         let period = 1.0_f64 / 60.0_f64;
         let nanos = period * 1_000_000_000.0_f64;
 
-        self.next_instruction.execute(&mut self.ram, &mut self.stack, &mut self.registers, &self.keys, &mut self.screen, &mut self.callbacks);
+        self.next_instruction.execute(
+            &mut self.ram,
+            &mut self.stack,
+            &mut self.registers,
+            &self.keys,
+            &mut self.screen,
+            &mut self.callbacks,
+        );
 
         // Décrémente le Delay Timer s'il a été défini.
         // Le timer a une fréquence de 60Hz.
@@ -429,4 +559,3 @@ impl<'a> Chip8<'a> {
         &self.next_instruction
     }
 }
-

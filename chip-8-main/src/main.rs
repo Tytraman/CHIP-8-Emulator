@@ -4,9 +4,7 @@ use std::{cell::RefCell, env, rc::Rc};
 
 use callback::update_callback;
 use chip_8_interpreter::chip::{CallbackData, Chip8};
-use graph_punk::{
-    maths::vec::Vec2, renderer::RendererManager, types::UserData, window::window::Window,
-};
+use graph_punk::{maths::vec::Vec2, message::MessageCaller, types::UserData, GraphPunk};
 
 pub struct Config {
     pub auto_next_instruction: bool,
@@ -23,65 +21,76 @@ fn main() -> Result<(), String> {
 
     println!("Loading program \"{}\"...", config.program_name);
 
-    let renderer_manager = RendererManager::new();
+    let mut graph_punk = GraphPunk::new();
+
+    graph_punk.create_window("chip8_window", "CHIP-8 emulator", 700, 400)?;
+    graph_punk.init_basic_resources()?;
 
     let mut chip8 = Chip8::build(&format!("Builtin/Programs/{}", config.program_name))?;
 
-    let mut window = match Window::new(
-        "CHIP-8 emulator",
-        700,
-        400,
-        Vec2 { x: 64, y: 32 },
-        &mut renderer_manager.borrow_mut(),
-    ) {
-        Ok(w) => w,
-        Err(e) => return Err(e),
-    };
-
-    if let Err(err) = renderer_manager
-        .borrow_mut()
-        .init_resources(window.get_renderer_name())
-    {
-        return Err(err);
-    }
+    graph_punk.window_set_display_size("chip8_window", Vec2 { x: 64, y: 32 })?;
 
     let callbacks = chip8.borrow_mut_callbacks();
 
-    callbacks.set_callback_data(CallbackData::new(Box::new(Rc::clone(&renderer_manager))));
+    let mut message_caller = MessageCaller::default();
+    message_caller.register_message("clear_pixel", |renderer, _, drawing_objects, _| {
+        let _ = renderer.clear_grid_pixel(drawing_objects);
+    });
+
+    message_caller.register_message("set_pixel", |renderer, _, drawing_objects, user_data| {
+        if let Some((x, y)) = user_data.get::<(usize, usize)>() {
+            let _ = renderer.set_grid_pixel(drawing_objects, *x, *y, true);
+        }
+    });
+
+    message_caller.register_message("unset_pixel", |renderer, _, drawing_objects, user_data| {
+        if let Some((x, y)) = user_data.get::<(usize, usize)>() {
+            let _ = renderer.set_grid_pixel(drawing_objects, *x, *y, false);
+        }
+    });
+
+    let message_caller = Rc::new(RefCell::new(message_caller));
+
+    callbacks.set_callback_data(CallbackData::new(Box::new(Rc::clone(&message_caller))));
 
     callbacks.set_clear_pixel_callback(|callback_data| {
-        if let Some(renderer_manager) = callback_data.get::<Rc<RefCell<RendererManager>>>() {
-            if let Some(renderer) = renderer_manager.borrow_mut().borrow_mut_renderer("0") {
-                let _ = renderer.clear_grid_pixel();
-            }
+        if let Some(rc_message_caller) = callback_data.get::<Rc<RefCell<MessageCaller>>>() {
+            let mut borrowed_message_caller = rc_message_caller.borrow_mut();
+
+            let _ = borrowed_message_caller.add_message("clear_pixel", UserData::default());
         }
     });
 
     callbacks.set_set_pixel_callback(|callback_data, x, y| {
-        if let Some(renderer_manager) = callback_data.get::<Rc<RefCell<RendererManager>>>() {
-            if let Some(renderer) = renderer_manager.borrow_mut().borrow_mut_renderer("0") {
-                let _ = renderer.set_grid_pixel(x as usize, y as usize, true);
-            }
+        if let Some(rc_message_caller) = callback_data.get::<Rc<RefCell<MessageCaller>>>() {
+            let mut borrowed_message_caller = rc_message_caller.borrow_mut();
+
+            let _ = borrowed_message_caller.add_message(
+                "set_pixel",
+                UserData::new(Box::new((x as usize, y as usize))),
+            );
         }
     });
 
     callbacks.set_unset_pixel_callback(|callback_data, x, y| {
-        if let Some(renderer_manager) = callback_data.get::<Rc<RefCell<RendererManager>>>() {
-            if let Some(renderer) = renderer_manager.borrow_mut().borrow_mut_renderer("0") {
-                let _ = renderer.set_grid_pixel(x as usize, y as usize, false);
-            }
+        if let Some(rc_message_caller) = callback_data.get::<Rc<RefCell<MessageCaller>>>() {
+            let mut borrowed_message_caller = rc_message_caller.borrow_mut();
+
+            let _ = borrowed_message_caller.add_message(
+                "unset_pixel",
+                UserData::new(Box::new((x as usize, y as usize))),
+            );
         }
     });
 
     let user_data = UserData::new(Box::new((config, chip8)));
 
-    window.set_update_callback(update_callback, user_data);
+    graph_punk.window_set_update_callback("chip8_window", update_callback, user_data)?;
 
     println!("Emulator is ready!");
-    match window.run(renderer_manager) {
-        Ok(_) => {}
-        Err(err) => return Err(err),
-    }
+    graph_punk.run_window("chip8_window", message_caller)?;
+
+    graph_punk.benchmark_print_results();
 
     println!("Good-bye!");
 
